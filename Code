@@ -1,0 +1,618 @@
+<!DOCTYPE html>
+
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+<title>Habit Wheel</title>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #080808;
+    --border: #1e1e1e;
+    --text: #ddd5c4;
+    --muted: #484848;
+    --gold: #c9a96e;
+    --gold-dim: #7a6040;
+  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Space Mono', monospace;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 28px 16px 56px;
+  }
+  header { text-align:center; margin-bottom:20px; }
+  h1 {
+    font-family: 'Cormorant Garamond', serif;
+    font-weight: 300;
+    font-style: italic;
+    font-size: clamp(1.8rem, 5vw, 2.8rem);
+    letter-spacing: 0.22em;
+    color: var(--gold);
+    text-transform: uppercase;
+  }
+  .subtitle {
+    font-size: 0.58rem;
+    letter-spacing: 0.3em;
+    color: var(--muted);
+    margin-top: 5px;
+    text-transform: uppercase;
+  }
+  .month-nav {
+    display: flex;
+    align-items: center;
+    gap: 18px;
+    margin-bottom: 20px;
+  }
+  .month-nav button {
+    background: none;
+    border: 1px solid var(--border);
+    color: var(--muted);
+    cursor: pointer;
+    font-family: 'Space Mono', monospace;
+    font-size: 0.65rem;
+    padding: 5px 12px;
+    letter-spacing: 0.1em;
+    transition: all 0.2s;
+  }
+  .month-nav button:hover { border-color: var(--gold); color: var(--gold); }
+  .month-label {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 1.15rem;
+    letter-spacing: 0.15em;
+    color: var(--text);
+    min-width: 200px;
+    text-align: center;
+  }
+  #wheel-svg {
+    display: block;
+    width: min(98vw, 700px);
+    height: auto;
+    overflow: visible;
+  }
+  /* Segment styling */
+  .seg {
+    stroke: #1a1a1a;
+    stroke-width: 0.8;
+    cursor: pointer;
+    transition: opacity 0.1s;
+  }
+  .seg:hover { opacity: 0.8; }
+  .seg.empty { fill: #111111; }
+  .label-block {
+    fill: #111111;
+    stroke: #1a1a1a;
+    stroke-width: 0.8;
+  }
+  .stats {
+    display: flex;
+    gap: 28px;
+    margin-top: 24px;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+  .stat { text-align: center; }
+  .stat-value {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 2rem;
+    font-weight: 300;
+    color: var(--gold);
+    display: block;
+    line-height: 1;
+  }
+  .stat-label {
+    font-size: 0.52rem;
+    letter-spacing: 0.2em;
+    color: var(--muted);
+    text-transform: uppercase;
+    margin-top: 3px;
+  }
+  .actions {
+    margin-top: 18px;
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+  .btn {
+    background: none;
+    border: 1px solid var(--border);
+    color: var(--muted);
+    font-family: 'Space Mono', monospace;
+    font-size: 0.6rem;
+    letter-spacing: 0.12em;
+    padding: 7px 16px;
+    cursor: pointer;
+    text-transform: uppercase;
+    transition: all 0.2s;
+  }
+  .btn:hover { border-color: #c97070; color: #c97070; }
+  .btn.edit { border-color: var(--gold-dim); color: var(--gold-dim); }
+  .btn.edit:hover { border-color: var(--gold); color: var(--gold); }
+
+/* Confirm modal */
+#confirm-overlay, #modal-overlay {
+display: none;
+position: fixed;
+inset: 0;
+background: rgba(0,0,0,0.85);
+z-index: 300;
+align-items: center;
+justify-content: center;
+backdrop-filter: blur(4px);
+}
+#confirm-overlay.open, #modal-overlay.open { display: flex; }
+#confirm-modal, #modal {
+background: #0e0e0e;
+border: 1px solid #2a2a2a;
+padding: 32px 28px 24px;
+width: min(400px, 90vw);
+position: relative;
+}
+#confirm-title {
+font-family: ‘Cormorant Garamond’, serif;
+font-weight: 300;
+font-style: italic;
+font-size: 1.3rem;
+letter-spacing: 0.15em;
+color: #c97070;
+text-transform: uppercase;
+margin-bottom: 10px;
+}
+#confirm-sub {
+font-size: 0.6rem;
+color: var(–muted);
+letter-spacing: 0.08em;
+line-height: 1.6;
+margin-bottom: 4px;
+}
+#modal-title {
+font-family: ‘Cormorant Garamond’, serif;
+font-weight: 300;
+font-style: italic;
+font-size: 1.5rem;
+letter-spacing: 0.18em;
+color: var(–gold);
+text-transform: uppercase;
+margin-bottom: 6px;
+}
+#modal-sub {
+font-size: 0.55rem;
+letter-spacing: 0.25em;
+color: var(–muted);
+text-transform: uppercase;
+margin-bottom: 28px;
+}
+.modal-row {
+display: flex;
+align-items: center;
+gap: 12px;
+margin-bottom: 14px;
+}
+.modal-dot { width:8px; height:8px; border-radius:2px; flex-shrink:0; }
+.modal-num { font-size:0.6rem; color:var(–muted); min-width:18px; }
+.modal-input {
+flex: 1;
+background: none;
+border: none;
+border-bottom: 1px solid #2a2a2a;
+color: var(–text);
+font-family: ‘Space Mono’, monospace;
+font-size: 0.7rem;
+padding: 6px 2px;
+outline: none;
+letter-spacing: 0.04em;
+transition: border-color 0.2s;
+}
+.modal-input:focus { border-bottom-color: var(–gold); }
+.modal-actions {
+display: flex;
+justify-content: flex-end;
+gap: 12px;
+margin-top: 28px;
+padding-top: 20px;
+border-top: 1px solid #1a1a1a;
+}
+#modal-close {
+position: absolute;
+top: 16px; right: 18px;
+background: none; border: none;
+color: var(–muted); font-size: 1.2rem;
+cursor: pointer; line-height: 1;
+transition: color 0.2s;
+}
+#modal-close:hover { color: var(–text); }
+.btn.primary { border-color: var(–gold-dim); color: var(–gold); }
+.btn.primary:hover { background: var(–gold); color: #080808; }
+</style>
+
+</head>
+<body>
+
+<header>
+  <h1>Habit Wheel</h1>
+  <p class="subtitle">Monthly discipline tracker</p>
+</header>
+
+<div class="month-nav">
+  <button id="prev-month">&#8592; PREV</button>
+  <div class="month-label" id="month-label"></div>
+  <button id="next-month">NEXT &#8594;</button>
+</div>
+
+<svg id="wheel-svg" xmlns="http://www.w3.org/2000/svg"></svg>
+
+<div class="stats">
+  <div class="stat"><span class="stat-value" id="stat-completed">0</span><span class="stat-label">Completions</span></div>
+  <div class="stat"><span class="stat-value" id="stat-pct">0%</span><span class="stat-label">This Month</span></div>
+  <div class="stat"><span class="stat-value" id="stat-streak">0</span><span class="stat-label">Best Streak</span></div>
+</div>
+
+<div class="actions">
+  <button class="btn" id="reset-month">Clear Month</button>
+  <button class="btn edit" id="open-modal">Edit Habits</button>
+</div>
+
+<!-- Confirm Clear Modal -->
+
+<div id="confirm-overlay">
+  <div id="confirm-modal">
+    <div id="confirm-title">Clear Month?</div>
+    <div id="confirm-sub">All data for <span id="confirm-month-name"></span> will be erased. Cannot be undone.</div>
+    <div class="modal-actions">
+      <button class="btn" id="confirm-cancel">Cancel</button>
+      <button class="btn" id="confirm-ok" style="border-color:#c97070;color:#c97070;">Clear</button>
+    </div>
+  </div>
+</div>
+
+<!-- Edit Habits Modal -->
+
+<div id="modal-overlay">
+  <div id="modal">
+    <button id="modal-close">&#x2715;</button>
+    <div id="modal-title">Edit Habits</div>
+    <div id="modal-sub">Tap a field to rename</div>
+    <div id="modal-fields"></div>
+    <div class="modal-actions">
+      <button class="btn" id="modal-cancel">Cancel</button>
+      <button class="btn primary" id="modal-save">Save</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── Constants ──────────────────────────────────────────────────────────────
+const COLORS = [
+  '#c9a96e','#7eb8a4','#c97070','#7a8ec9',
+  '#b07ec9','#c9b87e','#7ec9a0','#c97e9a'
+];
+const DEFAULT_HABITS = [
+  'Wake up 6:30','Drink 2L water','Meditate','Read 10 pages',
+  'Study 30min','No phone after 7pm','Strength training','Sleep by 10:30pm'
+];
+const NUM_HABITS = 8;
+
+// SVG viewBox dimensions — all geometry in these units
+const VB         = 520;          // viewBox size
+const CX         = VB * 0.54;   // wheel centre x
+const CY         = VB * 0.54;   // wheel centre y
+const INNER_R    = VB * 0.09;
+const OUTER_R    = VB * 0.46;
+const RING_SPAN  = OUTER_R - INNER_R;
+const RING_STEP  = RING_SPAN / NUM_HABITS;
+const LABEL_R    = OUTER_R + VB * 0.04;
+const START_A    = -Math.PI / 2; // 12 o'clock
+const SWEEP      = 1.5 * Math.PI; // 270°
+const LABEL_COLS = 6;
+const LEFT_M     = VB * 0.01;
+
+// ── State ──────────────────────────────────────────────────────────────────
+let state = loadState();
+function loadState() {
+  try { const s = JSON.parse(localStorage.getItem('habitwheel_v8')||'null'); if(s) return s; } catch(e){}
+  // Migrate from v6 if exists
+  try { const s = JSON.parse(localStorage.getItem('habitwheel_v6')||'null'); if(s) return s; } catch(e){}
+  return { habits: DEFAULT_HABITS.slice(), data: {} };
+}
+function saveState() {
+  localStorage.setItem('habitwheel_v8', JSON.stringify(state));
+}
+
+let currentYear  = 2026;
+let currentMonth = 3;
+const MONTHS = ['January','February','March','April','May','June',
+                'July','August','September','October','November','December'];
+function monthKey() { return `${currentYear}-${String(currentMonth).padStart(2,'0')}`; }
+function daysInMonth(y,m) { return new Date(y,m+1,0).getDate(); }
+function getMonthData() {
+  const key  = monthKey();
+  const days = daysInMonth(currentYear, currentMonth);
+  if (!state.data[key])
+    state.data[key] = Array.from({length:days}, ()=>new Array(NUM_HABITS).fill(false));
+  while (state.data[key].length < days) state.data[key].push(new Array(NUM_HABITS).fill(false));
+  return state.data[key];
+}
+
+// ── SVG helpers ────────────────────────────────────────────────────────────
+const SVG_NS = 'http://www.w3.org/2000/svg';
+function el(tag, attrs={}) {
+  const e = document.createElementNS(SVG_NS, tag);
+  for (const [k,v] of Object.entries(attrs)) e.setAttribute(k, v);
+  return e;
+}
+
+function polarXY(angle, r) {
+  return [CX + Math.cos(angle) * r, CY + Math.sin(angle) * r];
+}
+
+function arcPath(r1, r2, a1, a2) {
+  const [x1,y1] = polarXY(a1, r2);
+  const [x2,y2] = polarXY(a2, r2);
+  const [x3,y3] = polarXY(a2, r1);
+  const [x4,y4] = polarXY(a1, r1);
+  const lg = (a2 - a1 > Math.PI) ? 1 : 0;
+  return `M${x1},${y1} A${r2},${r2} 0 ${lg},1 ${x2},${y2} L${x3},${y3} A${r1},${r1} 0 ${lg},0 ${x4},${y4} Z`;
+}
+
+// ── Render ─────────────────────────────────────────────────────────────────
+function render() {
+  const svg  = document.getElementById('wheel-svg');
+  svg.innerHTML = '';
+
+  const data        = getMonthData();
+  const days        = daysInMonth(currentYear, currentMonth);
+  const anglePerDay = SWEEP / days;
+
+  // Set viewBox
+  svg.setAttribute('viewBox', `0 0 ${VB} ${VB}`);
+
+  // Background rect to catch taps on empty areas
+  svg.appendChild(el('rect', { width:VB, height:VB, fill:'#080808' }));
+
+  // ── Arc segments ──────────────────────────────────────────────────────
+  for (let d = 0; d < days; d++) {
+    const a1 = START_A + d * anglePerDay;
+    const a2 = START_A + (d+1) * anglePerDay;
+
+    for (let h = 0; h < NUM_HABITS; h++) {
+      const ringIdx = NUM_HABITS - 1 - h; // h=0 → outermost
+      const r1 = INNER_R + ringIdx * RING_STEP;
+      const r2 = INNER_R + (ringIdx+1) * RING_STEP;
+      const filled = data[d] && data[d][h];
+
+      const path = el('path', {
+        d: arcPath(r1, r2, a1, a2),
+        fill: filled ? COLORS[h] : '#111111',
+        stroke: '#1a1a1a',
+        'stroke-width': '0.8',
+        class: 'seg',
+        'data-day': d,
+        'data-habit': h
+      });
+
+      path.addEventListener('click', () => {
+        data[d][h] = !data[d][h];
+        path.setAttribute('fill', data[d][h] ? COLORS[h] : '#111111');
+        saveState();
+        updateStats();
+      });
+
+      svg.appendChild(path);
+    }
+  }
+
+  // ── Flat label blocks (left gap, seamless with arc) ────────────────────
+  // blockRight = CX exactly so blocks butt flush against arc at 12 o'clock
+  const blockRight = CX;
+  const blockAreaW = blockRight - LEFT_M;
+  const blockW     = blockAreaW / LABEL_COLS;
+
+  for (let h = 0; h < NUM_HABITS; h++) {
+    const ringIdx  = NUM_HABITS - 1 - h;
+    const r1       = INNER_R + ringIdx * RING_STEP;
+    const r2       = INNER_R + (ringIdx+1) * RING_STEP;
+    const blockTop = CY - r2;  // at 12 o'clock y = CY - r
+    const blockH   = r2 - r1;
+
+    for (let col = 0; col < LABEL_COLS; col++) {
+      const bx = LEFT_M + col * blockW;
+      svg.appendChild(el('rect', {
+        x: bx, y: blockTop,
+        width: blockW, height: blockH,
+        fill: '#111111',
+        stroke: '#1a1a1a',
+        'stroke-width': '0.8'
+      }));
+    }
+
+    // Colour dot — sits at left edge
+    const textY   = blockTop + blockH / 2;
+    const dotX    = LEFT_M + 5;
+    const fontSize = Math.max(6, RING_STEP * 0.28);
+
+    svg.appendChild(el('circle', {
+      cx: dotX, cy: textY, r: 2.5,
+      fill: COLORS[h]
+    }));
+
+    // Number
+    const numT = el('text', {
+      x: dotX + 7, y: textY,
+      'font-family': 'Space Mono, monospace',
+      'font-size': fontSize,
+      fill: '#555',
+      'dominant-baseline': 'middle'
+    });
+    numT.textContent = `${h+1}.`;
+    svg.appendChild(numT);
+
+    // Habit name — clip to block area so it never overflows into arc
+    const nameG = el('g');
+    const clipId = `clip-h${h}`;
+    const clipPath = el('clipPath', { id: clipId });
+    clipPath.appendChild(el('rect', {
+      x: dotX + 18, y: blockTop,
+      width: blockRight - (dotX + 18) - 2,
+      height: blockH
+    }));
+    svg.appendChild(clipPath);
+
+    const nameT = el('text', {
+      x: dotX + 18, y: textY,
+      'font-family': 'Space Mono, monospace',
+      'font-size': fontSize,
+      fill: '#ccc5b4',
+      'dominant-baseline': 'middle',
+      'clip-path': `url(#${clipId})`
+    });
+    nameT.textContent = state.habits[h] || `Habit ${h+1}`;
+    nameT.setAttribute('id', `habit-label-${h}`);
+    svg.appendChild(nameT);
+  }
+
+  // ── Day number labels ──────────────────────────────────────────────────
+  const dayFontSize = days > 28 ? 7 : 8.5;
+  for (let d = 0; d < days; d++) {
+    const mid = START_A + (d+0.5) * anglePerDay;
+    const [lx, ly] = polarXY(mid, LABEL_R);
+
+    const t = el('text', {
+      x: lx, y: ly,
+      'font-family': 'Space Mono, monospace',
+      'font-size': dayFontSize,
+      fill: '#888888',
+      'text-anchor': 'middle',
+      'dominant-baseline': 'middle'
+    });
+    t.textContent = d+1;
+    svg.appendChild(t);
+  }
+
+  // ── Centre text ────────────────────────────────────────────────────────
+  const ct1 = el('text', {
+    x: CX, y: CY - 7,
+    'font-family': 'Cormorant Garamond, serif',
+    'font-size': 11,
+    fill: '#444',
+    'text-anchor': 'middle',
+    'dominant-baseline': 'middle',
+    'letter-spacing': '2'
+  });
+  ct1.textContent = MONTHS[currentMonth].toUpperCase();
+  svg.appendChild(ct1);
+
+  const ct2 = el('text', {
+    x: CX, y: CY + 10,
+    'font-family': 'Cormorant Garamond, serif',
+    'font-weight': '300',
+    'font-size': 17,
+    fill: '#c9a96e',
+    'text-anchor': 'middle',
+    'dominant-baseline': 'middle'
+  });
+  ct2.textContent = currentYear;
+  svg.appendChild(ct2);
+
+  updateStats();
+}
+
+// ── Stats ──────────────────────────────────────────────────────────────────
+function updateStats() {
+  const data = getMonthData();
+  const total = data.length * NUM_HABITS;
+  const completed = data.reduce((a,day)=>a+day.filter(Boolean).length, 0);
+  document.getElementById('stat-completed').textContent = completed;
+  document.getElementById('stat-pct').textContent = Math.round(completed/total*100)+'%';
+  let best=0, cur=0;
+  data.forEach(day => { if(day.some(Boolean)){cur++;best=Math.max(best,cur);}else cur=0; });
+  document.getElementById('stat-streak').textContent = best;
+}
+
+// ── Month nav ──────────────────────────────────────────────────────────────
+function updateMonthLabel() {
+  document.getElementById('month-label').textContent = `${MONTHS[currentMonth]} ${currentYear}`;
+}
+document.getElementById('prev-month').addEventListener('click', () => {
+  currentMonth--; if(currentMonth<0){currentMonth=11;currentYear--;} refresh();
+});
+document.getElementById('next-month').addEventListener('click', () => {
+  currentMonth++; if(currentMonth>11){currentMonth=0;currentYear++;} refresh();
+});
+
+// ── Confirm clear modal ────────────────────────────────────────────────────
+const confirmOverlay = document.getElementById('confirm-overlay');
+document.getElementById('reset-month').addEventListener('click', () => {
+  document.getElementById('confirm-month-name').textContent = `${MONTHS[currentMonth]} ${currentYear}`;
+  confirmOverlay.classList.add('open');
+});
+document.getElementById('confirm-cancel').addEventListener('click', () => {
+  confirmOverlay.classList.remove('open');
+});
+document.getElementById('confirm-ok').addEventListener('click', () => {
+  const days = daysInMonth(currentYear, currentMonth);
+  state.data[monthKey()] = Array.from({length:days}, ()=>new Array(NUM_HABITS).fill(false));
+  saveState(); refresh();
+  confirmOverlay.classList.remove('open');
+});
+
+// ── Edit habits modal ──────────────────────────────────────────────────────
+const overlay     = document.getElementById('modal-overlay');
+const modalFields = document.getElementById('modal-fields');
+let modalInputs   = [];
+
+function openModal() {
+  modalFields.innerHTML = '';
+  modalInputs = [];
+  state.habits.forEach((habit, i) => {
+    const row   = document.createElement('div');
+    row.className = 'modal-row';
+    const dot   = document.createElement('div');
+    dot.className = 'modal-dot';
+    dot.style.background = COLORS[i];
+    const num   = document.createElement('span');
+    num.className = 'modal-num';
+    num.textContent = `${i+1}.`;
+    const input = document.createElement('input');
+    input.className = 'modal-input';
+    input.type = 'text';
+    input.value = habit;
+    input.placeholder = `Habit ${i+1}`;
+    input.addEventListener('keydown', e => {
+      if (e.key === 'Enter') { e.preventDefault(); if(i<NUM_HABITS-1) modalInputs[i+1].focus(); else closeModal(true); }
+      if (e.key === 'Escape') closeModal(false);
+    });
+    modalInputs.push(input);
+    row.appendChild(dot); row.appendChild(num); row.appendChild(input);
+    modalFields.appendChild(row);
+  });
+  overlay.classList.add('open');
+  setTimeout(() => modalInputs[0] && modalInputs[0].focus(), 100);
+}
+
+function closeModal(save) {
+  if (save) {
+    modalInputs.forEach((input, i) => { const v=input.value.trim(); if(v) state.habits[i]=v; });
+    saveState(); refresh();
+  }
+  overlay.classList.remove('open');
+}
+
+document.getElementById('open-modal').addEventListener('click', openModal);
+document.getElementById('modal-save').addEventListener('click', ()=>closeModal(true));
+document.getElementById('modal-cancel').addEventListener('click', ()=>closeModal(false));
+document.getElementById('modal-close').addEventListener('click', ()=>closeModal(false));
+overlay.addEventListener('click', e=>{ if(e.target===overlay) closeModal(false); });
+
+// ── Init ───────────────────────────────────────────────────────────────────
+function refresh() { updateMonthLabel(); render(); }
+refresh();
+</script>
+
+</body>
+</html>
