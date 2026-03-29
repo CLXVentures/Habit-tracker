@@ -302,7 +302,7 @@ const NUM_HABITS = 8;
 const VB         = 520;          // viewBox size
 const CX         = VB * 0.54;   // wheel centre x
 const CY         = VB * 0.54;   // wheel centre y
-const INNER_R    = VB * 0.09;
+const INNER_R    = VB * 0.16;
 const OUTER_R    = VB * 0.46;
 const RING_SPAN  = OUTER_R - INNER_R;
 const RING_STEP  = RING_SPAN / NUM_HABITS;
@@ -389,7 +389,7 @@ function render() {
       const path = el('path', {
         d: arcPath(r1, r2, a1, a2),
         fill: filled ? COLORS[h] : '#111111',
-        stroke: '#1a1a1a',
+        stroke: '#3d3d3d',
         'stroke-width': '0.8',
         class: 'seg',
         'data-day': d,
@@ -434,7 +434,7 @@ function render() {
     // Colour dot — sits at left edge
     const textY   = blockTop + blockH / 2;
     const dotX    = LEFT_M + 5;
-    const fontSize = Math.max(6, RING_STEP * 0.28);
+    const fontSize = Math.max(11, RING_STEP * 0.42);
 
     svg.appendChild(el('circle', {
       cx: dotX, cy: textY, r: 2.5,
@@ -486,7 +486,7 @@ function render() {
       x: lx, y: ly,
       'font-family': 'Space Mono, monospace',
       'font-size': dayFontSize,
-      fill: '#888888',
+      fill: '#aaaaaa',
       'text-anchor': 'middle',
       'dominant-baseline': 'middle'
     });
